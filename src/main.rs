@@ -1,137 +1,146 @@
+use regex::Regex;
 use std::env;
-use std::process;
 use std::fs::File;
 use std::fs::OpenOptions;
-use std::io::BufReader;
 use std::io::BufRead;
+use std::io::BufReader;
 use std::io::Write;
-use regex::Regex;
+use std::process;
 
 use sedust::Input;
 use sedust::Script;
 
 fn main() {
-
     let input = Input::new(env::args()).unwrap_or_else(|err| {
-	eprintln!("Problem parsing arguments: {}", err);
-	process::exit(1);
+        eprintln!("Problem parsing arguments: {}", err);
+        process::exit(1);
     });
 
     let script = Script::new(&input.script);
+    println!("{:?}", script);
 
     let mut hold_space = String::new();
     let mut pattern_space = String::new();
 
-    let filename1 = &input.filenames[0];
-    let file = File::open(filename1).unwrap();
-    let mut buf_reader = BufReader::new(file);
-
-    let temp = script.address.unwrap();
-    let address_range = temp.split(',').collect::<Vec<&str>>();
-    let begin_address: usize = address_range[0].parse().unwrap();
-    let mut end_address: usize = address_range[0].parse().unwrap();
-    if address_range.len() == 2 {
-	end_address = address_range[1].parse().unwrap();
+    let mut buf_readers = Vec::new();
+    for f_in in &input.filenames {
+        let file = File::open(f_in).unwrap();
+        buf_readers.push(BufReader::new(file));
     }
 
-    println!("---");
+    let mut begin_address: usize = 0;
+    let mut end_address: usize = usize::MAX;
+    match script.address {
+        Some(address) => {
+            let address_range = address.split(',').collect::<Vec<&str>>();
+            begin_address = address_range[0].parse().unwrap();
+            end_address = begin_address;
+            if address_range.len() == 2 {
+                end_address = address_range[1].parse().unwrap();
+            }
+        }
+        _ => {}
+    }
+
+    println!("--- Output ---");
     // Only deal with numerical addresses for now
     let options = &script.options.unwrap();
-    for (mut index, line) in buf_reader.lines().enumerate() {
-	index = index + 1;
-	pattern_space = line.unwrap();
+    let mut index = 0;
+    for reader in buf_readers {
+        for line in reader.lines() {
+            index += 1;
+            pattern_space = line.unwrap();
 
-	if index >= begin_address && index <= end_address {
-	    match script.command {
-		'a' => {
-		    pattern_space.push('\n');
-		    pattern_space.push_str(&options);
-		},
-		
-		'c' => {
-		    if index == end_address {
-			pattern_space = options.to_string();
-		    } else {
-			pattern_space.clear();
-		    }
-		},
+            if index >= begin_address && index <= end_address {
+                match script.command {
+                    'a' => {
+                        pattern_space.push('\n');
+                        pattern_space.push_str(&options);
+                    }
 
-		'd' => pattern_space.clear(),
-		
-		'g' => pattern_space = hold_space.clone(),
+                    'c' => {
+                        if index == end_address {
+                            pattern_space = options.to_string();
+                        } else {
+                            pattern_space.clear();
+                        }
+                    }
 
-		'G' => {
-		    pattern_space.push('\n');
-		    pattern_space.push_str(&hold_space);
-		}
+                    'd' => pattern_space.clear(),
 
-		'h' => hold_space = pattern_space.clone(),
+                    'g' => pattern_space = hold_space.clone(),
 
-		'H' => {
-		    hold_space.push('\n');
-		    hold_space.push_str(&pattern_space);
-		},
+                    'G' => {
+                        pattern_space.push('\n');
+                        pattern_space.push_str(&hold_space);
+                    }
 
-		'i' => {
-		    let mut temp = String::new();
-		    temp.push_str(&options);
-		    temp.push('\n');
-		    temp.push_str(&pattern_space);
-		    pattern_space = temp;
-		}
+                    'h' => hold_space = pattern_space.clone(),
 
-		'p' => println!("{}", pattern_space),
+                    'H' => {
+                        hold_space.push('\n');
+                        hold_space.push_str(&pattern_space);
+                    }
 
-		'P' => println!("{}", pattern_space.split('\n').collect::<Vec<&str>>()[0]),
+                    'i' => {
+                        let mut temp = String::new();
+                        temp.push_str(&options);
+                        temp.push('\n');
+                        temp.push_str(&pattern_space);
+                        pattern_space = temp;
+                    }
 
-		'q' => {
-		    // This is probably a hack
-		    println!("{}", pattern_space);
-		    return
-		},
+                    'p' => println!("{}", pattern_space),
 
-		'r' => {
-		    println!("{}", pattern_space);
-		    let r_file = File::open(&options).unwrap();
-		    let mut r_buf_reader = BufReader::new(r_file);
-		    for r_line in r_buf_reader.lines() {
-			println!("{}", r_line.unwrap());
-		    }
-		},
+                    'P' => println!("{}", pattern_space.split('\n').collect::<Vec<&str>>()[0]),
 
-		'w' => {
-		    let mut f_out = OpenOptions::new()
-			.append(true)
-			.open(&options)
-			.unwrap();
+                    'q' => {
+                        // This is probably a hack
+                        println!("{}", pattern_space);
+                        return;
+                    }
 
-		    writeln!(f_out, "{}", pattern_space);
-		},
-		
-		'x' => {
-		    let mut temp = String::new();
-		    temp = pattern_space;
-		    pattern_space = hold_space;
-		    hold_space = temp;
-		},
+                    'r' => {
+                        println!("{}", pattern_space);
+                        let r_file = File::open(&options).unwrap();
+                        let mut r_buf_reader = BufReader::new(r_file);
+                        for r_line in r_buf_reader.lines() {
+                            println!("{}", r_line.unwrap());
+                        }
+                    }
 
-		'#' => continue,
+                    'w' => {
+                        let mut f_out = OpenOptions::new().append(true).open(&options).unwrap();
 
-		_ => panic!("Command not recognized. Aborting."),
-	    }
-	}
+                        writeln!(f_out, "{}", pattern_space);
+                    }
 
-	if script.command == 'r' && index == begin_address {
-	    // Don't print because the pattern space is printed
-	    // /before/ the r command does its thing
-	} else if !pattern_space.is_empty() {
-	    println!("{}", pattern_space);
-	} else if pattern_space.is_empty() && (script.command == 'x' || script.command == 'g') {
-	    println!("{}", pattern_space);
-	}
+                    'x' => {
+                        let mut temp = String::new();
+                        temp = pattern_space;
+                        pattern_space = hold_space;
+                        hold_space = temp;
+                    }
+
+                    '=' => println!("{}", index),
+
+                    '#' => continue,
+
+                    _ => panic!("Command not recognized. Aborting."),
+                }
+            }
+
+            if script.command == 'r' && index == begin_address {
+                // Don't print because the pattern space is printed
+                // /before/ the r command does its thing
+            } else if !pattern_space.is_empty() {
+                println!("{}", pattern_space);
+            } else if pattern_space.is_empty() && (script.command == 'x' || script.command == 'g') {
+                println!("{}", pattern_space);
+            }
+        }
     }
 }
-
 
 // // Commands can be separated by semicolons (;)
 // pub enum Command {
