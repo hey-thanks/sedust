@@ -4,7 +4,7 @@ use std::env;
 #[derive(Debug)]
 pub struct Input {
     pub script: String,
-    pub filenames: Vec<String>, // Assume a filename is required. Probably change to an Option eventually?
+    pub filenames: Option<Vec<String>>,
 }
 
 impl Input {
@@ -21,7 +21,14 @@ impl Input {
             filenames.push(argument);
         }
 
-        Ok(Input { script, filenames })
+        Ok(Input {
+            script: script,
+            filenames: if filenames.len() == 0 {
+                None
+            } else {
+                Some(filenames)
+            },
+        })
     }
 }
 

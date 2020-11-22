@@ -29,8 +29,9 @@ what's ipmlemented so far:
   - r
   - w
   - x
+  - =
   - comments (#)
-- Only one file can be given as input
+- Handles multiple input files
 - Only one script can be specified (i.e. no ; or script files)
 
 Here's what still needs done (a lot!):
@@ -42,7 +43,6 @@ Here's what still needs done (a lot!):
 - Regex addresses
 - Improved script parsing to handle multiple scripts
   - For example, sedust cannot yet handle 'n;n;s/./X' since this is three scripts separated by semi-colons
-- Handle multiple input files
 - Commands
   - b
   - D
@@ -52,7 +52,6 @@ Here's what still needs done (a lot!):
   - t
   - y
   - :
-  - =
 
 ## The Master Plan
 

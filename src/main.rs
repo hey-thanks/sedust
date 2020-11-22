@@ -1,10 +1,11 @@
-use regex::Regex;
+// use regex::Regex;
 use std::env;
 use std::fs::File;
 use std::fs::OpenOptions;
 use std::io::BufRead;
 use std::io::BufReader;
 use std::io::Write;
+use std::io::{self};
 use std::process;
 
 use sedust::Input;
@@ -16,16 +17,27 @@ fn main() {
         process::exit(1);
     });
 
+    println!("\n--- Input Struct ---");
+    println!("{:?}", input);
+
     let script = Script::new(&input.script);
+    println!("\n--- Script Struct ---");
     println!("{:?}", script);
 
     let mut hold_space = String::new();
     let mut pattern_space = String::new();
 
-    let mut buf_readers = Vec::new();
-    for f_in in &input.filenames {
-        let file = File::open(f_in).unwrap();
-        buf_readers.push(BufReader::new(file));
+    let mut buf_readers: Vec<Box<dyn BufRead>> = vec![];
+    match input.filenames {
+        Some(filenames) => {
+            for f_in in &filenames {
+                let file = File::open(f_in).unwrap();
+                buf_readers.push(Box::new(BufReader::new(file)));
+            }
+        }
+        None => {
+            buf_readers.push(Box::new(BufReader::new(io::stdin())));
+        }
     }
 
     let mut begin_address: usize = 0;
@@ -39,10 +51,10 @@ fn main() {
                 end_address = address_range[1].parse().unwrap();
             }
         }
-        _ => {}
+        None => {}
     }
 
-    println!("--- Output ---");
+    println!("\n--- Output ---");
     // Only deal with numerical addresses for now
     let options = &script.options.unwrap();
     let mut index = 0;
@@ -103,7 +115,7 @@ fn main() {
                     'r' => {
                         println!("{}", pattern_space);
                         let r_file = File::open(&options).unwrap();
-                        let mut r_buf_reader = BufReader::new(r_file);
+                        let r_buf_reader = BufReader::new(r_file);
                         for r_line in r_buf_reader.lines() {
                             println!("{}", r_line.unwrap());
                         }
@@ -111,15 +123,15 @@ fn main() {
 
                     'w' => {
                         let mut f_out = OpenOptions::new().append(true).open(&options).unwrap();
-
-                        writeln!(f_out, "{}", pattern_space);
+                        writeln!(f_out, "{}", pattern_space).unwrap();
                     }
 
                     'x' => {
-                        let mut temp = String::new();
-                        temp = pattern_space;
-                        pattern_space = hold_space;
-                        hold_space = temp;
+                        std::mem::swap(&mut pattern_space, &mut hold_space);
+                        // let mut temp = String::new();
+                        // temp = pattern_space;
+                        // pattern_space = hold_space;
+                        // hold_space = temp;
                     }
 
                     '=' => println!("{}", index),
