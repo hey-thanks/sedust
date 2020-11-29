@@ -1,33 +1,61 @@
 use regex::Regex;
-use std::env;
+
+#[macro_use]
+extern crate clap;
+use clap::App;
 
 #[derive(Debug)]
 pub struct Input {
     pub script: String,
     pub filenames: Option<Vec<String>>,
+    pub suppress_printing: bool,
 }
 
 impl Input {
-    pub fn new(mut args: env::Args) -> Result<Input, &'static str> {
-        args.next();
+    pub fn new() -> Result<Input, &'static str> {
+	let yaml = load_yaml!("cli.yml");
+	let matches = App::from_yaml(yaml).get_matches();
 
-        let script = match args.next() {
-            Some(arg) => arg,
-            None => return Err("Missing at least one input."),
-        };
+	let e_scripts: Option<Vec<_>> = match matches.values_of("e") {
+            Some(scripts) => Some(scripts.collect()),
+            None => None,
+	};
+	
+	let f_scripts: Option<Vec<_>> = match matches.values_of("f") {
+            Some(files) => Some(files.collect()),
+            None => None,
+	};
+	
+	let mut f_in_vec = None;
+	let mut indexed_input_script = None;
+	
+	if e_scripts.is_none() && f_scripts.is_none() {
+            if let Some(script) = matches.value_of("input_script") {
+		indexed_input_script = Some(script);
+            }
+	} else {
+            if let Some(script) = matches.value_of("input_script") {
+		f_in_vec = Some(vec![script.to_string()]);
+            }
+	}
+	
+	if let Some(filenames) = matches.values_of("f_in") {
+	    if f_in_vec.is_none() {
+		f_in_vec = Some(filenames.map(|x| x.to_string()).collect());
+	    } else {
+		f_in_vec.as_mut().unwrap().append(&mut filenames.map(|x| x.to_string()).collect());
+	    }
+	}
 
-        let mut filenames = vec![];
-        for argument in args {
-            filenames.push(argument);
-        }
+	let script = match indexed_input_script {
+	    Some(thing) => thing,
+	    None => e_scripts.unwrap()[0],
+	};
 
         Ok(Input {
-            script: script,
-            filenames: if filenames.len() == 0 {
-                None
-            } else {
-                Some(filenames)
-            },
+            script: script.to_string(),
+	    filenames: f_in_vec,
+	    suppress_printing: matches.is_present("n"),
         })
     }
 }

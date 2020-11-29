@@ -17,6 +17,9 @@ addresses, which are arguably the most used features of sed. So here's
 what's ipmlemented so far:
 
 - Numerical addresses
+- Command line switches
+  - -e (only one)
+  - -n
 - Commands
   - a
   - c
@@ -37,9 +40,8 @@ what's ipmlemented so far:
 Here's what still needs done (a lot!):
 
 - Command line switches
-  - -e
+  - -e (allow multiple)
   - -f
-  - -n
 - Regex addresses
 - Improved script parsing to handle multiple scripts
   - For example, sedust cannot yet handle 'n;n;s/./X' since this is three scripts separated by semi-colons

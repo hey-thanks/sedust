@@ -1,5 +1,3 @@
-// use regex::Regex;
-use std::env;
 use std::fs::File;
 use std::fs::OpenOptions;
 use std::io::BufRead;
@@ -12,7 +10,7 @@ use sedust::Input;
 use sedust::Script;
 
 fn main() {
-    let input = Input::new(env::args()).unwrap_or_else(|err| {
+    let input = Input::new().unwrap_or_else(|err| {
         eprintln!("Problem parsing arguments: {}", err);
         process::exit(1);
     });
@@ -20,6 +18,11 @@ fn main() {
     println!("\n--- Input Struct ---");
     println!("{:?}", input);
 
+    // The line below may work when I move to supporting multiple
+    // scripts, though I think the Script struct will need to contain
+    // more fields and the parsing of these scripts definitely needs
+    // to be improved.
+    // let scripts = input.scripts.map(|s| Script::new(&s)).collect();
     let script = Script::new(&input.script);
     println!("\n--- Script Struct ---");
     println!("{:?}", script);
@@ -142,14 +145,16 @@ fn main() {
                 }
             }
 
-            if script.command == 'r' && index == begin_address {
-                // Don't print because the pattern space is printed
-                // /before/ the r command does its thing
-            } else if !pattern_space.is_empty() {
-                println!("{}", pattern_space);
-            } else if pattern_space.is_empty() && (script.command == 'x' || script.command == 'g') {
-                println!("{}", pattern_space);
-            }
+	    if !input.suppress_printing {
+		if script.command == 'r' && index == begin_address {
+		    // Don't print because the pattern space is printed
+		    // /before/ the r command does its thing
+		} else if !pattern_space.is_empty() {
+		    println!("{}", pattern_space);
+		} else if pattern_space.is_empty() && (script.command == 'x' || script.command == 'g') {
+		    println!("{}", pattern_space);
+		}
+	    }
         }
     }
 }

@@ -1,0 +1,31 @@
+name: clap_practice
+version: "1.0"
+about: A sed implementation written in Rust
+args:
+    - n:
+        short: n
+        required: false
+        takes_value: false
+        help: suppress automatic printing
+    - e:
+        short: e
+        multiple: true
+        number_of_values: 1
+        value_name: script
+        help: script input
+        takes_value: true
+    - f:
+        short: f
+        multiple: true
+        number_of_values: 1
+        value_name: script_file
+        help: script file input
+        takes_value: true
+    - input_script:
+        help: Sets the input script to use from the cmd line.
+        index: 1
+        required_unless_one: [e, f]
+    - f_in:
+        help: Sets the input file to operate on.
+        index: 2
+        multiple: true
